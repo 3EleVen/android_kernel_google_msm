@@ -80,6 +80,7 @@ obj-$(CONFIG_FB_MSM_MIPI_DSI_NOVATEK) += mipi_novatek.o
 obj-$(CONFIG_FB_MSM_MIPI_DSI_LG) += mipi_lg.o
 obj-$(CONFIG_FB_MSM_MIPI_DSI_JDI) += mipi_JDI.o
 obj-$(CONFIG_FB_MSM_MIPI_DSI_LGIT) += mipi_lgit.o
+obj-$(CONFIG_FB_MSM_MIPI_DSI_HITACHI) += mipi_hitachi.o
 obj-$(CONFIG_FB_MSM_MIPI_DSI_ORISE) += mipi_orise.o
 obj-$(CONFIG_FB_MSM_MIPI_DSI_RENESAS) += mipi_renesas.o
 obj-$(CONFIG_FB_MSM_MIPI_DSI_TRULY) += mipi_truly.o
@@ -154,6 +155,7 @@ obj-$(CONFIG_FB_MSM_MIPI_NOVATEK_1080_HD_PT) += mipi_novatek_1080P_pt.o
 obj-$(CONFIG_FB_MSM_MIPI_LG_1080_HD_PT) += mipi_lg_1080P_pt.o
 obj-$(CONFIG_FB_MSM_MIPI_JDI_1080_HD_PT) += mipi_JDI_1080P_pt.o
 obj-$(CONFIG_FB_MSM_MIPI_LGIT_VIDEO_WXGA_PT) += mipi_lgit_video_wxga_pt.o
+obj-$(CONFIG_FB_MSM_MIPI_HITACHI_CMD_720P_PT) += mipi_hitachi_cmd_720p_pt.o
 endif
 
 obj-$(CONFIG_FB_MSM_LCDC_PANEL) += lcdc_panel.o
@@ -184,6 +186,7 @@ ccflags-y := -I$(src)/mhl
 obj-$(CONFIG_FB_MSM_HDMI_MHL_8334) += mhl-8334.o
 mhl-8334-objs  += mhl/mhl_8334.o
 mhl-8334-objs  += mhl/mhl_i2c_utils.o
+obj-$(CONFIG_FB_MSM_HDMI_MHL_9244) += mhl9244/
 
 obj-$(CONFIG_FB_MSM_EXTMDDI_SVGA) += mddi_ext_lcd.o
 

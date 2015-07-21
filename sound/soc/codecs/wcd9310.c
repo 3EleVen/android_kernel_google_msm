@@ -103,13 +103,13 @@ struct tabla_codec_dai_data {
 
 #define TABLA_MBHC_BUTTON_MIN 0x8000
 
-#define TABLA_MBHC_FAKE_INSERT_LOW 10
+#define TABLA_MBHC_FAKE_INSERT_LOW 30
 #define TABLA_MBHC_FAKE_INSERT_HIGH 80
 #define TABLA_MBHC_FAKE_INS_HIGH_NO_GPIO 150
 
 #define TABLA_MBHC_STATUS_REL_DETECTION 0x0C
 
-#define TABLA_MBHC_GPIO_REL_DEBOUNCE_TIME_MS 50
+#define TABLA_MBHC_GPIO_REL_DEBOUNCE_TIME_MS 20
 
 #define TABLA_MBHC_FAKE_INS_DELTA_MV 200
 #define TABLA_MBHC_FAKE_INS_DELTA_SCALED_MV 300
@@ -2300,7 +2300,11 @@ static void tabla_codec_start_hs_polling(struct snd_soc_codec *codec)
 		pr_debug("Polling is not active, do not start polling\n");
 		return;
 	}
+#ifdef CONFIG_MACH_APQ8064_ARIES
+	snd_soc_write(codec, TABLA_A_MBHC_SCALING_MUX_1, 0x88);
+#else
 	snd_soc_write(codec, TABLA_A_MBHC_SCALING_MUX_1, 0x84);
+#endif
 
 	if (tabla->no_mic_headset_override) {
 		pr_debug("%s setting button threshold to min", __func__);
@@ -2658,8 +2662,11 @@ static int tabla_codec_enable_micbias(struct snd_soc_dapm_widget *w,
 			tabla_codec_switch_micbias(codec, 0);
 			TABLA_RELEASE_LOCK(tabla->codec_resource_lock);
 		}
-
+#ifdef CONFIG_MACH_APQ8064_ARIES
+		snd_soc_update_bits(codec, w->reg, 0x1E, 0x0A);
+#else
 		snd_soc_update_bits(codec, w->reg, 0x0E, 0x0A);
+#endif
 		tabla_codec_update_cfilt_usage(codec, cfilt_sel_val, 1);
 
 		if (strnstr(w->name, internal1_text, 30))
@@ -3808,6 +3815,7 @@ static const struct snd_soc_dapm_route audio_map[] = {
 	{"MIC BIAS2 Internal1", NULL, "LDO_H"},
 	{"MIC BIAS2 Internal2", NULL, "LDO_H"},
 	{"MIC BIAS2 Internal3", NULL, "LDO_H"},
+	{"MIC BIAS2 External", NULL, "LDO_H"},
 	{"MIC BIAS3 Internal1", NULL, "LDO_H"},
 	{"MIC BIAS3 Internal2", NULL, "LDO_H"},
 	{"MIC BIAS3 External", NULL, "LDO_H"},
@@ -5427,6 +5435,8 @@ static short __tabla_codec_sta_dce(struct snd_soc_codec *codec, int dce,
 	short bias_value;
 	struct tabla_priv *tabla = snd_soc_codec_get_drvdata(codec);
 
+	pr_debug("%s: enter", __func__);
+
 	wcd9xxx_disable_irq(codec->control_data, TABLA_IRQ_MBHC_POTENTIAL);
 	if (noreldetection)
 		tabla_turn_onoff_rel_detection(codec, false);
@@ -5464,6 +5474,7 @@ static short __tabla_codec_sta_dce(struct snd_soc_codec *codec, int dce,
 	if (noreldetection)
 		tabla_turn_onoff_rel_detection(codec, true);
 	wcd9xxx_enable_irq(codec->control_data, TABLA_IRQ_MBHC_POTENTIAL);
+	pr_debug("%s: leave", __func__);
 
 	return bias_value;
 }
@@ -5503,7 +5514,11 @@ static short tabla_codec_setup_hs_polling(struct snd_soc_codec *codec)
 	snd_soc_update_bits(codec, tabla->mbhc_bias_regs.ctl_reg, 0x1F, 0x16);
 
 	snd_soc_update_bits(codec, TABLA_A_CDC_MBHC_CLK_CTL, 0x2, 0x2);
+#ifdef CONFIG_MACH_APQ8064_ARIES
+	snd_soc_write(codec, TABLA_A_MBHC_SCALING_MUX_1, 0x88);
+#else
 	snd_soc_write(codec, TABLA_A_MBHC_SCALING_MUX_1, 0x84);
+#endif
 
 	snd_soc_update_bits(codec, TABLA_A_TX_7_MBHC_EN, 0x80, 0x80);
 	snd_soc_update_bits(codec, TABLA_A_TX_7_MBHC_EN, 0x1F, 0x1C);
@@ -5566,8 +5581,13 @@ void tabla_set_and_turnoff_hph_padac(struct snd_soc_codec *codec)
 		set_bit(TABLA_HPHR_DAC_OFF_ACK, &tabla->hph_pa_dac_state);
 
 	snd_soc_update_bits(codec, TABLA_A_RX_HPH_CNP_EN, 0x30, 0x00);
+#ifdef CONFIG_MACH_APQ8064_ARIES
+	snd_soc_update_bits(codec, TABLA_A_RX_HPH_L_DAC_CTL,
+			    0x80, 0x00);
+#else
 	snd_soc_update_bits(codec, TABLA_A_RX_HPH_L_DAC_CTL,
 			    0xC0, 0x00);
+#endif
 	snd_soc_update_bits(codec, TABLA_A_RX_HPH_R_DAC_CTL,
 			    0xC0, 0x00);
 	usleep_range(wg_time * 1000, wg_time * 1000);
@@ -5944,6 +5964,8 @@ void tabla_mbhc_cal(struct snd_soc_codec *codec)
 	void *calibration;
 	u16 bias2_ctl;
 
+	pr_debug("%s: enter", __func__);
+
 	tabla = snd_soc_codec_get_drvdata(codec);
 	calibration = tabla->mbhc_cfg.calibration;
 
@@ -6050,11 +6072,17 @@ void tabla_mbhc_cal(struct snd_soc_codec *codec)
 			    cfilt_mode);
 	snd_soc_update_bits(codec, TABLA_A_BIAS_CENTRAL_BG_CTL, 0x02, bg_mode);
 
+#ifdef CONFIG_MACH_APQ8064_ARIES
+	snd_soc_write(codec, TABLA_A_MBHC_SCALING_MUX_1, 0x88);
+#else
 	snd_soc_write(codec, TABLA_A_MBHC_SCALING_MUX_1, 0x84);
+#endif
 	usleep_range(100, 100);
 
 	wcd9xxx_enable_irq(codec->control_data, TABLA_IRQ_MBHC_POTENTIAL);
 	tabla_turn_onoff_rel_detection(codec, true);
+
+	pr_debug("%s: leave", __func__);
 }
 
 void *tabla_mbhc_cal_btn_det_mp(const struct tabla_mbhc_btn_detect_cfg* btn_det,
@@ -6132,12 +6160,23 @@ static s16 tabla_mbhc_highest_btn_mv(struct snd_soc_codec *codec)
 	struct tabla_priv *tabla;
 	struct tabla_mbhc_btn_detect_cfg *btn_det;
 	u16 *btn_high;
+	s16 result;
+	int i;
 
 	tabla = snd_soc_codec_get_drvdata(codec);
 	btn_det = TABLA_MBHC_CAL_BTN_DET_PTR(tabla->mbhc_cfg.calibration);
 	btn_high = tabla_mbhc_cal_btn_det_mp(btn_det, TABLA_BTN_DET_V_BTN_HIGH);
 
-	return btn_high[btn_det->num_btn - 1];
+	result = btn_high[0];
+	for (i = 1; i < btn_det->num_btn; i++)
+	{
+		if (btn_high[i] > result)
+		{
+			result = btn_high[i];
+		}
+	}
+
+	return result;
 }
 
 static void tabla_mbhc_calc_thres(struct snd_soc_codec *codec)
@@ -6316,6 +6355,7 @@ static int tabla_determine_button(const struct tabla_priv *priv,
 		pr_debug("%s: couldn't find button number for mic mv %d\n",
 			 __func__, micmv);
 
+	pr_debug("%s: micmv=%d, btn=%d", __func__, micmv, btn);
 	return btn;
 }
 
@@ -6932,16 +6972,16 @@ tabla_codec_get_plug_type(struct snd_soc_codec *codec, bool highhph)
 		 */
 		if (mic_mv[i] < plug_type_ptr->v_no_mic) {
 			plug_type[i] = PLUG_TYPE_HEADPHONE;
-			pr_debug("%s: Detect attempt %d, detected Headphone\n",
-				 __func__, i);
+			pr_debug("%s: Detect attempt %d, detected Headphone (mic_mv=%d)\n",
+				 __func__, i, mic_mv[i]);
 		} else if (highhph && (mic_mv[i] > plug_type_ptr->v_hs_max)) {
 			plug_type[i] = PLUG_TYPE_HIGH_HPH;
 			pr_debug("%s: Detect attempt %d, detected High "
-				 "Headphone\n", __func__, i);
+				 "Headphone (mic_mv=%d)\n", __func__, i, mic_mv[i]);
 		} else {
 			plug_type[i] = PLUG_TYPE_HEADSET;
-			pr_debug("%s: Detect attempt %d, detected Headset\n",
-				 __func__, i);
+			pr_debug("%s: Detect attempt %d, detected Headset (mic_mv=%d)\n",
+				 __func__, i, mic_mv[i]);
 		}
 
 		if (i > 0 && (plug_type[i - 1] != plug_type[i])) {
@@ -7605,6 +7645,13 @@ static void tabla_hs_gpio_handler(struct snd_soc_codec *codec)
 				    0x00);
 		snd_soc_update_bits(codec, TABLA_A_MBHC_HPH, 0x01, 0x00);
 		tabla_codec_detect_plug_type(codec);
+
+#ifdef CONFIG_MACH_APQ8064_ARIES
+		//Do the workaround for headset fast plugin-plugout
+		snd_soc_update_bits(codec, TABLA_A_CLK_BUFF_EN1, 0x05, 0x05);
+		snd_soc_update_bits(codec, TABLA_A_CDC_MBHC_VOLT_B2_CTL, 0xff, 0x0);
+		snd_soc_update_bits(codec, tabla->mbhc_bias_regs.mbhc_reg, 0x80, 0x80);
+#endif
 	} else if ((tabla->current_plug != PLUG_TYPE_NONE) && !insert) {
 		tabla->lpi_enabled = false;
 		wmb();
@@ -8235,6 +8282,9 @@ static const struct tabla_reg_mask_val tabla_codec_reg_init_val[] = {
 
 	/* config DMIC clk to CLK_MODE_1 (3.072Mhz@12.88Mhz mclk) */
 	{TABLA_A_CDC_CLK_DMIC_CTL, 0x2A, 0x2A},
+#ifdef CONFIG_MACH_APQ8064_ARIES
+	{TABLA_A_MICB_2_CTL, 0x10, 0x00},
+#endif
 
 };
 
